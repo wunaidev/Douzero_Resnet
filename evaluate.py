@@ -24,6 +24,7 @@ if __name__ == '__main__':
     args.bid = False
     if args.output or args.bid:
         args.num_workers = 1
+    '''
     t = 3
     frame = 3085177900
     adp_frame = 2511184300
@@ -78,6 +79,7 @@ if __name__ == '__main__':
         args.landlord = 'baselines/douzero_ADP/landlord_weights_%i.ckpt' % adp_frame
         args.landlord_up = 'baselines/douzero_ADP/landlord_up.ckpt'
         args.landlord_down = 'baselines/douzero_ADP/landlord_down.ckpt'
+    '''
     os.environ['KMP_DUPLICATE_LIB_OK'] = 'True'
     os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu_device
 
