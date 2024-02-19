@@ -9,6 +9,9 @@ import torch
 from torch import nn
 import torch.nn.functional as F
 
+from torch.nn import TransformerEncoder, TransformerEncoderLayer
+
+
 class LandlordLstmModel(nn.Module):
     def __init__(self):
         super().__init__()
@@ -277,6 +280,8 @@ class GeneralModel(nn.Module):
         return nn.Sequential(*layers)
 
     def forward(self, z, x, return_value=False, flags=None, debug=False):
+        #print(f"zshape:{z.shape}")
+        #print(f"xshape:{x.shape}")
         out = F.relu(self.bn1(self.conv1(z)))
         out = self.layer1(out)
         out = self.layer2(out)
@@ -296,6 +301,67 @@ class GeneralModel(nn.Module):
                 action = torch.argmax(out,dim=0)[0]
             return dict(action=action, max_value=torch.max(out))
 
+
+###尝试Transformer
+class PositionalEncoding(nn.Module):
+    def __init__(self, d_model, dropout=0.0, max_len=54):
+        super(PositionalEncoding, self).__init__()
+        self.dropout = nn.Dropout(p=dropout)
+
+        position = torch.arange(0, max_len, dtype=torch.float).unsqueeze(1)
+        div_term = torch.exp(torch.arange(0, d_model, 2).float() * (-torch.log(torch.tensor(10000.0)) / d_model))
+        pe = torch.zeros(max_len, d_model)
+        pe[:, 0::2] = torch.sin(position * div_term)
+        pe[:, 1::2] = torch.cos(position * div_term)
+        pe = pe.unsqueeze(0).transpose(0, 1)
+        self.register_buffer('pe', pe)
+
+    def forward(self, x):
+        x = x + self.pe[:x.size(0), :]
+        return self.dropout(x)
+
+class GeneralModelTransformer(nn.Module):
+    def __init__(self, input_dim=40, d_model=128, nhead=8, num_encoder_layers=3, dim_feedforward=256, dropout=0.0, max_seq_length=54):
+        super(GeneralModelTransformer, self).__init__()
+        self.input_proj = nn.Linear(input_dim, d_model)
+        self.pos_encoder = PositionalEncoding(d_model, dropout, max_seq_length)
+        encoder_layers = TransformerEncoderLayer(d_model, nhead, dim_feedforward, dropout)
+        self.transformer_encoder = TransformerEncoder(encoder_layers, num_encoder_layers)
+        self.encoder_dim = d_model * max_seq_length
+        
+        # Assuming x is concatenated 4 times as per the previous implementation
+        self.fc_input_dim = self.encoder_dim + 15 * 4
+        self.linear1 = nn.Linear(self.fc_input_dim, 1024)
+        self.linear2 = nn.Linear(1024, 512)
+        self.linear3 = nn.Linear(512, 256)
+        self.linear4 = nn.Linear(256, 1)
+
+    def forward(self, z, x, return_value=False, flags=None, debug=False):
+        #print(f"zshape:{z.shape}")
+        #print(f"xshape:{x.shape}")
+        z = z.permute(2, 0, 1)  # Change to (seq_length, batch, features)
+        z = self.input_proj(z)
+        z = self.pos_encoder(z)
+        z = self.transformer_encoder(z)
+        z = z.permute(1, 2, 0).flatten(1)  # Flatten the sequence dimension
+        
+        # Concatenate x 4 times and combine with transformer output
+        x_repeated = x.repeat(1, 4)
+        combined = torch.cat([z, x_repeated], dim=-1)
+        
+        out = F.leaky_relu(self.linear1(combined))
+        out = F.leaky_relu(self.linear2(out))
+        out = F.leaky_relu(self.linear3(out))
+        out = F.leaky_relu(self.linear4(out))
+        
+        if return_value:
+            return dict(values=out)
+        else:
+            if flags is not None and flags.exp_epsilon > 0 and np.random.rand() < flags.exp_epsilon:
+                action = torch.randint(out.shape[0], (1,))[0]
+            else:
+                action = torch.argmax(out, dim=0)[0]
+            return dict(action=action, max_value=torch.max(out))
 
 
 
@@ -430,7 +496,7 @@ class OldModel:
         return self.models
 
 
-class Model:
+class OldModel2:
     """
     The wrapper for the three models. We also wrap several
     interfaces such as share_memory, eval, etc.
@@ -471,10 +537,42 @@ class Model:
         return self.models
 
 
+class Model:
+    """
+    The wrapper for the three models. We also wrap several
+    interfaces such as share_memory, eval, etc.
+    """
+    def __init__(self, device=0):
+        self.models = {}
+        if not device == "cpu":
+            device = 'cuda:' + str(device)
+        # model = GeneralModel().to(torch.device(device))
+        self.models['landlord'] = GeneralModelTransformer().to(torch.device(device))
+        self.models['landlord_up'] = GeneralModelTransformer().to(torch.device(device))
+        self.models['landlord_down'] = GeneralModelTransformer().to(torch.device(device))
+        self.models['bidding'] = BidModel().to(torch.device(device))
 
+    def forward(self, position, z, x, training=False, flags=None, debug=False):
+        model = self.models[position]
+        return model.forward(z, x, training, flags, debug)
 
+    def share_memory(self):
+        self.models['landlord'].share_memory()
+        self.models['landlord_up'].share_memory()
+        self.models['landlord_down'].share_memory()
+        self.models['bidding'].share_memory()
 
+    def eval(self):
+        self.models['landlord'].eval()
+        self.models['landlord_up'].eval()
+        self.models['landlord_down'].eval()
+        self.models['bidding'].eval()
 
+    def parameters(self, position):
+        return self.models[position].parameters()
 
+    def get_model(self, position):
+        return self.models[position]
 
-
+    def get_models(self):
+        return self.models
