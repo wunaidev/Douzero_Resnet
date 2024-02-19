@@ -32,7 +32,7 @@ class DeepAgent:
         self.EnvCard2RealCard = {3: '3', 4: '4', 5: '5', 6: '6', 7: '7',
                             8: '8', 9: '9', 10: 'T', 11: 'J', 12: 'Q',
                             13: 'K', 14: 'A', 17: '2', 20: 'X', 30: 'D'}
-    def act(self, infoset):
+    def act(self, infoset, return_action_probs=False):
         if len(infoset.legal_actions) == 1:
             return infoset.legal_actions[0]
 
@@ -44,6 +44,7 @@ class DeepAgent:
             z_batch, x_batch = z_batch.cuda(), x_batch.cuda()
         y_pred = self.model.forward(z_batch, x_batch, return_value=True)['values']
         y_pred = y_pred.detach().cpu().numpy()
+        #print(y_pred.shape)
 
         best_action_index = np.argmax(y_pred, axis=0)[0]
         best_action = infoset.legal_actions[best_action_index]
@@ -59,4 +60,7 @@ class DeepAgent:
         # # print(value_list)
         # print(output)
         # print("--------------------\n")
-        return best_action
+        if return_action_probs:
+            return best_action, y_pred
+        else:
+            return best_action
