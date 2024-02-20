@@ -543,7 +543,7 @@ class ModelResNet:
         return self.models
 
 
-class ModelTransfomer:
+class ModelTransformer:
     """
     The wrapper for the three models. We also wrap several
     interfaces such as share_memory, eval, etc.
