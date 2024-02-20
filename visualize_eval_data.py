@@ -32,7 +32,7 @@ def display_sample_data_with_last_move(collected_data, num_samples=5):
             else:
                 print("上一轮出的牌: 无（可能是过牌）")
             
-            print(f"当前视角信息（部分）: x_batch: {obs['x_batch'][0]}, z_batch: {obs['z_batch'][0]}")
+            print(f"当前视角信息（部分）: x_batch: {obs['x_batch'][0]}, z_batch: {obs['z_batch'][0].shape}")
             print("------\n")
             samples_shown[position] += 1
         if all(count >= num_samples for count in samples_shown.values()):

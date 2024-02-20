@@ -323,6 +323,36 @@ class PositionalEncoding(nn.Module):
         x = x + self.pe[:x.size(0), :]
         return self.dropout(x)
 
+class AttentionFusionLayer(nn.Module):
+    def __init__(self, encoder_dim, card_dim, fusion_dim):
+        super(AttentionFusionLayer, self).__init__()
+        self.encoder_dim = encoder_dim
+        self.card_dim = card_dim
+        self.fusion_dim = fusion_dim
+        self.query_layer = nn.Linear(encoder_dim, fusion_dim)
+        self.key_layer = nn.Linear(card_dim, fusion_dim)
+        self.value_layer = nn.Linear(card_dim, fusion_dim)
+        self.output_layer = nn.Linear(fusion_dim, fusion_dim)
+
+    def forward(self, z, x):
+        # Generate query, key, value
+        query = self.query_layer(z)  # For historical environment
+        key = self.key_layer(x)     # For current hand cards
+        value = self.value_layer(x)  # For For current hand cards
+
+        # Calculate attention weights
+        attn_weights = F.softmax(torch.matmul(query, key.transpose(-2, -1)) / (self.fusion_dim ** 0.5), dim=-1)
+        
+        # Apply attention weights to value
+        attn_output = torch.matmul(attn_weights, value)
+        
+        # Combine attn_output and query (current hand cards features)
+        combined = attn_output + query
+
+        # Pass through the final linear layer
+        output = self.output_layer(combined)
+        return output
+
 class GeneralModelTransformer(nn.Module):
     def __init__(self, input_dim=40, d_model=32, nhead=4, num_encoder_layers=2, dim_feedforward=256, dropout=0.0, max_seq_length=54):
         super(GeneralModelTransformer, self).__init__()
@@ -332,33 +362,51 @@ class GeneralModelTransformer(nn.Module):
         self.transformer_encoder = TransformerEncoder(encoder_layers, num_encoder_layers)
 
         self.encoder_dim = d_model * max_seq_length
+        self.card_dim = 15  # Adjust based on your input dimension for x
+        self.att_fusion_dim = 256  # Dimension for the fused features
         
         # Assuming x is concatenated 4 times as per the previous implementation
-        self.fc_input_dim = self.encoder_dim + 15 * 4
+        #self.fc_input_dim = self.encoder_dim + self.card_dim
+        self.attention_fusion = AttentionFusionLayer(self.encoder_dim, self.card_dim, self.att_fusion_dim)
 
         # BatchNorm layer for combined input
-        self.batch_norm_combined = nn.BatchNorm1d(self.fc_input_dim)  
-        self.linear1 = nn.Linear(self.fc_input_dim, 1024)
-        self.linear2 = nn.Linear(1024, 512)
-        self.linear3 = nn.Linear(512, 256)
-        self.linear4 = nn.Linear(256, 1)
+        #self.batch_norm_combined = nn.BatchNorm1d(self.fc_input_dim)  
+        self.linear1 = nn.Linear(self.att_fusion_dim, 128)
+        self.linear2 = nn.Linear(128, 32)
+        self.linear3 = nn.Linear(32, 1)
 
     def forward(self, z, x, return_value=False, flags=None, debug=False):
+
         z = z.permute(2, 0, 1)  # Change to (seq_length, batch, features)
         z = self.input_proj(z)
         z = self.pos_encoder(z)
         z = self.transformer_encoder(z)
         z = z.permute(1, 2, 0).flatten(1)  # Flatten the sequence dimension
-        x_repeated = x.repeat(1, 4)
-        combined = torch.cat([z, x_repeated], dim=-1)
+        #x_repeated = x.repeat(1, 4)
+        #combined = torch.cat([z, x], dim=-1)
+ 
         
         # Apply BatchNorm to the combined input
-        combined = self.batch_norm_combined(combined)
+        # combined = self.batch_norm_combined(combined)
+        combined = self.attention_fusion(z, x)
+        print(x.shape)
+        print(x)
+
+        '''
+        tensor1=combined[0,:]
+        tensor2=combined[1,:]
+        print(f"第一行数据{tensor1}")
+        print(f"第二行数据{tensor2}")
+        print(f"是否相等：{torch.equal(tensor1, tensor2)}")
+        '''
         
         out = F.gelu(self.linear1(combined))
+        #print(f"l1:{out}")
+
         out = F.gelu(self.linear2(out))
+        #print(f"l2:{out}")
         out = F.gelu(self.linear3(out))
-        out = F.gelu(self.linear4(out))
+        #print(f"l3:{out}")
         
         if return_value:
             return dict(values=out)

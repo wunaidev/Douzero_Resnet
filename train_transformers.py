@@ -1,6 +1,6 @@
 import torch
 from torch.utils.data import DataLoader, Dataset
-from torch.optim import Adam
+from torch.optim import AdamW
 import torch.nn.functional as F
 import pickle
 import numpy as np
@@ -8,6 +8,8 @@ from douzero.dmc.models import ModelTransformer,ModelResNet  # 假设你的模�
 from douzero.env.env import get_obs
 from tqdm import tqdm
 from douzero.evaluation.simulation import evaluate
+from generate_eval_data import generate
+from collect_soft_labels import collect_and_save_data
 
 class DouzeroDataset(Dataset):
     def __init__(self, data):
@@ -44,10 +46,13 @@ def train(model, train_loader, optimizer, device):
         optimizer.zero_grad()
         outputs = model.forward(z, x, return_value=True)
         loss = F.mse_loss(outputs['values'], action_probs)
-        #print("****below outputs****\n")
-        #print(outputs['values'])
-        #print("****below action_probs****\n")
-        #print(action_probs)
+        if batch_idx % 101 == 0:
+            print("****below outputs****\n")
+            print(outputs['values'])
+            print(torch.argmax(outputs['values'], dim=0)[0])
+            print("****below action_probs****\n")
+            #print(action_probs)
+            print(torch.argmax(action_probs, dim=0)[0])
         loss.backward()
         optimizer.step()
         total_loss += loss.item()
@@ -72,22 +77,36 @@ def main():
     with open('/content/Douzero_Resnet/collected_soft_labels.pkl', 'rb') as f:
         data = pickle.load(f)
 
-    if which_model=="resnet":
-        model_wrapper = ModelResNet(device='0' if str(device)=='cuda' else 'cpu')
+    if which_model == "resnet":
+        model_wrapper = ModelResNet(device='0' if str(device) == 'cuda' else 'cpu')
     else:
-        model_wrapper = ModelTransformer(device='0' if str(device)=='cuda' else 'cpu')
+        model_wrapper = ModelTransformer(device='0' if str(device) == 'cuda' else 'cpu')
     print(f"正在训练:{which_model}")
+    
+    # 加载模型权重（如果存在）
+    weight_files = {
+        'landlord': f'{which_model}_landlord_model.ckpt',
+        'landlord_up': f'{which_model}_landlord_up_model.ckpt',
+        'landlord_down': f'{which_model}_landlord_down_model.ckpt'
+    }
+    for position, weight_file in weight_files.items():
+        try:
+            model_wrapper.get_model(position).load_state_dict(torch.load(weight_file))
+            print(f"Successfully loaded weights from {weight_file} for {position}")
+        except FileNotFoundError:
+            print(f"No weight file found for {position} at {weight_file}, initializing from scratch.")
+    
     optimizers = {
-        'landlord': Adam(model_wrapper.get_model('landlord').parameters(), lr=1e-4),
-        'landlord_up': Adam(model_wrapper.get_model('landlord_up').parameters(), lr=1e-4),
-        'landlord_down': Adam(model_wrapper.get_model('landlord_down').parameters(), lr=1e-4)
+        'landlord': AdamW(model_wrapper.get_model('landlord').parameters(), lr=1e-7),
+        'landlord_up': AdamW(model_wrapper.get_model('landlord_up').parameters(), lr=1e-7),
+        'landlord_down': AdamW(model_wrapper.get_model('landlord_down').parameters(), lr=1e-7)
     }
 
     epochs = 10000
     for epoch in range(epochs):
         for position in ['landlord', 'landlord_up', 'landlord_down']:
             #register_gradient_hooks(model_wrapper.get_model(position))
-            #model_wrapper.get_model(position).linear4.weight.register_hook(lambda grad: print(grad))
+            #model_wrapper.get_model(position).linear3.weight.register_hook(lambda grad: print(grad))
             # 根据position过滤数据
             filtered_data = [item for item in data if item['position'] == position]
             position_dataset = DouzeroDataset(filtered_data)
@@ -105,7 +124,7 @@ def main():
             f"random",
             f"eval_data.pkl",
             8,
-            False,
+            True,
             False,
             "NEW")
 
@@ -114,7 +133,7 @@ def main():
             f"{which_model}_landlord_down_model.ckpt",
             f"eval_data.pkl",
             8,
-            False,
+            True,
             False,
             "NEW")
 
@@ -125,7 +144,7 @@ def main():
             print("output_pickle:", eval_data)
 
             data = []
-            for _ in range(flags.num_games):
+            for _ in range(5000):
                 data.append(generate())
 
             print("saving pickle file...")
