@@ -337,8 +337,8 @@ class GeneralModelTransformer(nn.Module):
         self.linear4 = nn.Linear(256, 1)
 
     def forward(self, z, x, return_value=False, flags=None, debug=False):
-        #print(f"zshape:{z.shape}")
-        #print(f"xshape:{x.shape}")
+        print(f"zshape:{z.shape}")
+        print(f"xshape:{x.shape}")
         z = z.permute(2, 0, 1)  # Change to (seq_length, batch, features)
         z = self.input_proj(z)
         z = self.pos_encoder(z)
@@ -419,6 +419,12 @@ model_dict_lstm['landlord'] = GeneralModel
 model_dict_lstm['landlord_up'] = GeneralModel
 model_dict_lstm['landlord_down'] = GeneralModel
 
+model_dict_transformer = {}
+model_dict_transformer['landlord'] = GeneralModelTransformer
+model_dict_transformer['landlord_up'] = GeneralModelTransformer
+model_dict_transformer['landlord_down'] = GeneralModelTransformer
+model_dict_new['bidding'] = BidModel
+
 class General_Model:
     """
     The wrapper for the three models. We also wrap several
@@ -496,7 +502,7 @@ class OldModel:
         return self.models
 
 
-class OldModel2:
+class ModelResNet:
     """
     The wrapper for the three models. We also wrap several
     interfaces such as share_memory, eval, etc.
@@ -537,7 +543,7 @@ class OldModel2:
         return self.models
 
 
-class Model:
+class ModelTransfomer:
     """
     The wrapper for the three models. We also wrap several
     interfaces such as share_memory, eval, etc.

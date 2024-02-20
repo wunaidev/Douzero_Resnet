@@ -1,7 +1,7 @@
 import multiprocessing as mp
 import pickle
 import douzero.env.env
-from douzero.dmc.models import Model
+from douzero.dmc.models import ModelResNet
 from douzero.env.game import GameEnv
 import torch
 import numpy as np
@@ -30,7 +30,7 @@ def mp_simulate(card_play_data_list, card_play_model_path_dict, q, output, bid_o
     env = GameEnv(players)
     bid_model = None
     if bid_output:
-        model = Model(device=0)
+        model = ModelResNet(device=0)
         bid_model = model.get_model("bidding")
         bid_model_path = card_play_model_path_dict["landlord"].replace("landlord", "bidding")
         weights = torch.load(bid_model_path)

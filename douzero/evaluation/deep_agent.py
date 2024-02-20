@@ -4,10 +4,12 @@ import numpy as np
 from douzero.env.env import get_obs
 
 def _load_model(position, model_path, model_type):
-    from douzero.dmc.models import model_dict_new, model_dict
+    from douzero.dmc.models import model_dict_new, model_dict, model_dict_transformer
     model = None
     if model_type == "general":
         model = model_dict_new[position]()
+    elif model_type == "transformer":
+        model = model_dict_transformer[position]()
     else:
         model = model_dict[position]()
     model_state_dict = model.state_dict()
@@ -27,8 +29,15 @@ def _load_model(position, model_path, model_type):
 class DeepAgent:
 
     def __init__(self, position, model_path):
-        self.model_type = "general" if "resnet" in model_path else "old"
+        if "resnet" in model_path:
+            self.model_type = "general"
+        elif "transformer" in model_path:
+            self.model_type = "transformer"
+        else:
+            self.model_type = "old"
+        print(f"{position}方正在使用模型:{self.model_type}")
         self.model = _load_model(position, model_path, self.model_type)
+        #print(self.model)
         self.EnvCard2RealCard = {3: '3', 4: '4', 5: '5', 6: '6', 7: '7',
                             8: '8', 9: '9', 10: 'T', 11: 'J', 12: 'Q',
                             13: 'K', 14: 'A', 17: '2', 20: 'X', 30: 'D'}
@@ -36,7 +45,8 @@ class DeepAgent:
         if len(infoset.legal_actions) == 1:
             return infoset.legal_actions[0]
 
-        obs = get_obs(infoset, self.model_type == "general")
+        #obs = get_obs(infoset, self.model_type == "general")
+        obs = get_obs(infoset, self.model_type in ["general", "transformer"])
 
         z_batch = torch.from_numpy(obs['z_batch']).float()
         x_batch = torch.from_numpy(obs['x_batch']).float()
