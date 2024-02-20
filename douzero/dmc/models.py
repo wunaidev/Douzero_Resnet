@@ -337,8 +337,8 @@ class GeneralModelTransformer(nn.Module):
         self.linear4 = nn.Linear(256, 1)
 
     def forward(self, z, x, return_value=False, flags=None, debug=False):
-        print(f"zshape:{z.shape}")
-        print(f"xshape:{x.shape}")
+        #print(f"zshape:{z.shape}")
+        #print(f"xshape:{x.shape}")
         z = z.permute(2, 0, 1)  # Change to (seq_length, batch, features)
         z = self.input_proj(z)
         z = self.pos_encoder(z)

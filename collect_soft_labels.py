@@ -119,7 +119,7 @@ if __name__ == "__main__":
         'landlord_up': '/content/Douzero_Resnet/baselines/resnet/resnet_landlord_up.ckpt',
         'landlord_down': '/content/Douzero_Resnet/baselines/resnet/resnet_landlord_down.ckpt'
     }
-    num_processes = 1
+    num_processes = 8
     output_file = 'collected_soft_labels.pkl'
     
     collect_and_save_data(eval_data, card_play_model_path_dict, num_processes, output_file)
