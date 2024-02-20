@@ -283,11 +283,14 @@ class GeneralModel(nn.Module):
         #print(f"zshape:{z.shape}")
         #print(f"xshape:{x.shape}")
         out = F.relu(self.bn1(self.conv1(z)))
+        #print(f"outconv1shape:{out.shape}")
         out = self.layer1(out)
         out = self.layer2(out)
         out = self.layer3(out)
+        #print(f"outshape:{out.shape}")
         out = out.flatten(1,2)
         out = torch.cat([x,x,x,x,out], dim=-1)
+        #print(f"outflatplusshape:{out.shape}")
         out = F.leaky_relu_(self.linear1(out))
         out = F.leaky_relu_(self.linear2(out))
         out = F.leaky_relu_(self.linear3(out))
@@ -321,38 +324,43 @@ class PositionalEncoding(nn.Module):
         return self.dropout(x)
 
 class GeneralModelTransformer(nn.Module):
-    def __init__(self, input_dim=40, d_model=128, nhead=8, num_encoder_layers=3, dim_feedforward=256, dropout=0.0, max_seq_length=54):
+    def __init__(self, input_dim=40, d_model=32, nhead=8, num_encoder_layers=2, dim_feedforward=256, dropout=0.0, max_seq_length=54):
         super(GeneralModelTransformer, self).__init__()
         self.input_proj = nn.Linear(input_dim, d_model)
         self.pos_encoder = PositionalEncoding(d_model, dropout, max_seq_length)
         encoder_layers = TransformerEncoderLayer(d_model, nhead, dim_feedforward, dropout)
         self.transformer_encoder = TransformerEncoder(encoder_layers, num_encoder_layers)
+        
+        
+
         self.encoder_dim = d_model * max_seq_length
         
         # Assuming x is concatenated 4 times as per the previous implementation
         self.fc_input_dim = self.encoder_dim + 15 * 4
+
+        # BatchNorm layer for combined input
+        self.batch_norm_combined = nn.BatchNorm1d(self.fc_input_dim)  
         self.linear1 = nn.Linear(self.fc_input_dim, 1024)
         self.linear2 = nn.Linear(1024, 512)
         self.linear3 = nn.Linear(512, 256)
         self.linear4 = nn.Linear(256, 1)
 
     def forward(self, z, x, return_value=False, flags=None, debug=False):
-        #print(f"zshape:{z.shape}")
-        #print(f"xshape:{x.shape}")
         z = z.permute(2, 0, 1)  # Change to (seq_length, batch, features)
         z = self.input_proj(z)
         z = self.pos_encoder(z)
         z = self.transformer_encoder(z)
         z = z.permute(1, 2, 0).flatten(1)  # Flatten the sequence dimension
-        
-        # Concatenate x 4 times and combine with transformer output
         x_repeated = x.repeat(1, 4)
         combined = torch.cat([z, x_repeated], dim=-1)
         
-        out = F.leaky_relu(self.linear1(combined))
-        out = F.leaky_relu(self.linear2(out))
-        out = F.leaky_relu(self.linear3(out))
-        out = F.leaky_relu(self.linear4(out))
+        # Apply BatchNorm to the combined input
+        combined = self.batch_norm_combined(combined)
+        
+        out = F.gelu(self.linear1(combined))
+        out = F.gelu(self.linear2(out))
+        out = F.gelu(self.linear3(out))
+        out = F.gelu(self.linear4(out))
         
         if return_value:
             return dict(values=out)
@@ -362,7 +370,6 @@ class GeneralModelTransformer(nn.Module):
             else:
                 action = torch.argmax(out, dim=0)[0]
             return dict(action=action, max_value=torch.max(out))
-
 
 
 

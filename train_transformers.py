@@ -7,9 +7,7 @@ import numpy as np
 from douzero.dmc.models import ModelTransformer,ModelResNet  # 假设你的模型定义在model.py文件中
 from douzero.env.env import get_obs
 from tqdm import tqdm
-
-import matplotlib.pyplot as plt
-from IPython.display import clear_output
+from douzero.evaluation.simulation import evaluate
 
 class DouzeroDataset(Dataset):
     def __init__(self, data):
@@ -46,10 +44,10 @@ def train(model, train_loader, optimizer, device):
         optimizer.zero_grad()
         outputs = model.forward(z, x, return_value=True)
         loss = F.mse_loss(outputs['values'], action_probs)
-        print("****below outputs****\n")
-        print(outputs['values'])
-        print("****below action_probs****\n")
-        print(action_probs)
+        #print("****below outputs****\n")
+        #print(outputs['values'])
+        #print("****below action_probs****\n")
+        #print(action_probs)
         loss.backward()
         optimizer.step()
         total_loss += loss.item()
@@ -59,6 +57,13 @@ def train(model, train_loader, optimizer, device):
 
     return total_loss / len(train_loader)
 
+def print_grad_hook(grad):
+    print(grad)
+
+def register_gradient_hooks(model):
+    for name, parameter in model.named_parameters():
+        parameter.register_hook(print_grad_hook)
+
 def main():
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     print(f"Using device: {device}")
@@ -67,26 +72,47 @@ def main():
     with open('/content/Douzero_Resnet/collected_soft_labels.pkl', 'rb') as f:
         data = pickle.load(f)
 
-    model_wrapper = ModelResNet(device='0' if str(device)=='cuda' else 'cpu')
+    model_wrapper = ModelTransformer(device='0' if str(device)=='cuda' else 'cpu')
     optimizers = {
-        'landlord': Adam(model_wrapper.get_model('landlord').parameters(), lr=1e-3),
-        'landlord_up': Adam(model_wrapper.get_model('landlord_up').parameters(), lr=1e-2),
-        'landlord_down': Adam(model_wrapper.get_model('landlord_down').parameters(), lr=1e-2)
+        'landlord': Adam(model_wrapper.get_model('landlord').parameters(), lr=1e-4),
+        'landlord_up': Adam(model_wrapper.get_model('landlord_up').parameters(), lr=1e-4),
+        'landlord_down': Adam(model_wrapper.get_model('landlord_down').parameters(), lr=1e-4)
     }
 
     epochs = 10
     for epoch in range(epochs):
         for position in ['landlord', 'landlord_up', 'landlord_down']:
+            #register_gradient_hooks(model_wrapper.get_model(position))
+            #model_wrapper.get_model(position).linear4.weight.register_hook(lambda grad: print(grad))
             # 根据position过滤数据
             filtered_data = [item for item in data if item['position'] == position]
             position_dataset = DouzeroDataset(filtered_data)
             position_loader = DataLoader(position_dataset, batch_size=1, shuffle=True)
 
             print(f"Training {position} model, Epoch {epoch+1}/{epochs}")
+            print(f"训练数据:{len(position_loader)}条")
             total_loss = train(model_wrapper.get_model(position), position_loader, optimizers[position], device)
             print(f"Loss: {total_loss:.4f}")
             # 保存模型
-            torch.save(model_wrapper.get_model(position).state_dict(), f'{position}_model.ckpt')
+            torch.save(model_wrapper.get_model(position).state_dict(), f'transformer_{position}_model.ckpt')
 
+        evaluate(f"transformer_landlord_model.ckpt",
+             f"random",
+             f"random",
+             f"eval_data.pkl",
+             8,
+             False,
+             False,
+             "NEW")
+
+        evaluate(f"random",
+             f"transformer_landlord_up_model.ckpt",
+             f"transformer_landlord_down_model.ckpt",
+             f"eval_data.pkl",
+             8,
+             False,
+             False,
+             "NEW")
+        
 if __name__ == '__main__':
     main()
