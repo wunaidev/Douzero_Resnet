@@ -72,14 +72,18 @@ def main():
     with open('/content/Douzero_Resnet/collected_soft_labels.pkl', 'rb') as f:
         data = pickle.load(f)
 
-    model_wrapper = ModelTransformer(device='0' if str(device)=='cuda' else 'cpu')
+    if which_model=="resnet":
+        model_wrapper = ModelResNet(device='0' if str(device)=='cuda' else 'cpu')
+    else:
+        model_wrapper = ModelTransformer(device='0' if str(device)=='cuda' else 'cpu')
+    print(f"正在训练:{which_model}")
     optimizers = {
         'landlord': Adam(model_wrapper.get_model('landlord').parameters(), lr=1e-4),
         'landlord_up': Adam(model_wrapper.get_model('landlord_up').parameters(), lr=1e-4),
         'landlord_down': Adam(model_wrapper.get_model('landlord_down').parameters(), lr=1e-4)
     }
 
-    epochs = 10
+    epochs = 10000
     for epoch in range(epochs):
         for position in ['landlord', 'landlord_up', 'landlord_down']:
             #register_gradient_hooks(model_wrapper.get_model(position))
@@ -94,25 +98,54 @@ def main():
             total_loss = train(model_wrapper.get_model(position), position_loader, optimizers[position], device)
             print(f"Loss: {total_loss:.4f}")
             # 保存模型
-            torch.save(model_wrapper.get_model(position).state_dict(), f'transformer_{position}_model.ckpt')
+            torch.save(model_wrapper.get_model(position).state_dict(), f'{which_model}_{position}_model.ckpt')
 
-        evaluate(f"transformer_landlord_model.ckpt",
-             f"random",
-             f"random",
-             f"eval_data.pkl",
-             8,
-             False,
-             False,
-             "NEW")
+        evaluate(f"{which_model}_landlord_model.ckpt",
+            f"random",
+            f"random",
+            f"eval_data.pkl",
+            8,
+            False,
+            False,
+            "NEW")
 
         evaluate(f"random",
-             f"transformer_landlord_up_model.ckpt",
-             f"transformer_landlord_down_model.ckpt",
-             f"eval_data.pkl",
-             8,
-             False,
-             False,
-             "NEW")
+            f"{which_model}_landlord_up_model.ckpt",
+            f"{which_model}_landlord_down_model.ckpt",
+            f"eval_data.pkl",
+            8,
+            False,
+            False,
+            "NEW")
+
+        if (epoch+1)%3==0:
+            print("正在生成新的数据...")
+            eval_data = '/content/Douzero_Resnet/eval_data.pkl'
+
+            print("output_pickle:", eval_data)
+
+            data = []
+            for _ in range(flags.num_games):
+                data.append(generate())
+
+            print("saving pickle file...")
+            with open(eval_data,'wb') as g:
+                pickle.dump(data,g,pickle.HIGHEST_PROTOCOL)
+
+            
+            card_play_model_path_dict = {
+                'landlord': '/content/Douzero_Resnet/baselines/resnet/resnet_landlord.ckpt',
+                'landlord_up': '/content/Douzero_Resnet/baselines/resnet/resnet_landlord_up.ckpt',
+                'landlord_down': '/content/Douzero_Resnet/baselines/resnet/resnet_landlord_down.ckpt'
+            }
+            num_processes = 8
+            output_file = 'collected_soft_labels.pkl'
+            
+            collect_and_save_data(eval_data, card_play_model_path_dict, num_processes, output_file)
+
+            
         
 if __name__ == '__main__':
+    #which_model = "resnet"
+    which_model = "transformer"
     main()

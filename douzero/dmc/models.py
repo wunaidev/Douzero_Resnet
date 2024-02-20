@@ -324,14 +324,12 @@ class PositionalEncoding(nn.Module):
         return self.dropout(x)
 
 class GeneralModelTransformer(nn.Module):
-    def __init__(self, input_dim=40, d_model=32, nhead=8, num_encoder_layers=2, dim_feedforward=256, dropout=0.0, max_seq_length=54):
+    def __init__(self, input_dim=40, d_model=32, nhead=4, num_encoder_layers=2, dim_feedforward=256, dropout=0.0, max_seq_length=54):
         super(GeneralModelTransformer, self).__init__()
         self.input_proj = nn.Linear(input_dim, d_model)
         self.pos_encoder = PositionalEncoding(d_model, dropout, max_seq_length)
         encoder_layers = TransformerEncoderLayer(d_model, nhead, dim_feedforward, dropout)
         self.transformer_encoder = TransformerEncoder(encoder_layers, num_encoder_layers)
-        
-        
 
         self.encoder_dim = d_model * max_seq_length
         
