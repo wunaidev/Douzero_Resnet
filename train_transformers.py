@@ -22,7 +22,7 @@ class DouzeroDataset(Dataset):
         item = self.data[idx]
         position = item['position']
 
-        obs = get_obs(item['game_state'], use_general=True)
+        obs = _get_obs_transformer(item['game_state'], use_general=True)
         z = torch.from_numpy(obs['z_batch']).float()
         x = torch.from_numpy(obs['x_batch']).float()
 
