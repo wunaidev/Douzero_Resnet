@@ -1121,13 +1121,18 @@ def _get_obs_general(infoset, position):
                   _action_seq_list2array(_process_action_seq(infoset.card_play_action_seq, 32))
                   ))
 
+    #print(f"zshape:{z.shape}")
+
     _z_batch = np.repeat(
         z[np.newaxis, :, :],
         num_legal_actions, axis=0)
+    #print(f"_z_batchshape:{_z_batch.shape}")
     my_action_batch = my_action_batch[:,np.newaxis,:]
     z_batch = np.zeros([len(_z_batch),40,54],int)
     for i in range(0,len(_z_batch)):
         z_batch[i] = np.vstack((my_action_batch[i],_z_batch[i]))
+    #print(f"z_batchshape:{z_batch.shape}")
+    #print(f"z_batch:{z_batch[0, -1 , :]}")
     obs = {
         'position': position,
         'x_batch': x_batch.astype(np.float32),

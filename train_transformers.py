@@ -37,30 +37,70 @@ class DouzeroDataset(Dataset):
 def train(model, train_loader, optimizer, device):
     model.train()
     total_loss = 0
+    correct_predictions = 0
+    total_predictions = 0
     for batch_idx, (position, z, x, action_probs) in enumerate(tqdm(train_loader)):
-        # 使用squeeze方法去除batch_size维度
         z = torch.squeeze(z, 0).to(device)
         x = torch.squeeze(x, 0).to(device)
         action_probs = torch.squeeze(action_probs, 0).to(device)
 
         optimizer.zero_grad()
         outputs = model.forward(z, x, return_value=True)
-        loss = F.mse_loss(outputs['values'], action_probs)
-        if batch_idx % 101 == 0:
-            print("****below outputs****\n")
-            print(outputs['values'])
-            print(torch.argmax(outputs['values'], dim=0)[0])
-            print("****below action_probs****\n")
+        
+        # 调整outputs['values']的形状以适应F.cross_entropy
+        # 假设outputs['values']的形状原本为[action_nums, 1]，我们需要将其变为[1, action_nums]来模拟batch_size为1的情况
+        q_values = outputs['values'].squeeze(-1)  # 将形状从[action_nums, 1]变为[action_nums]
+        t_value = action_probs.squeeze(-1)
+        # 计算MSE损失
+        #mse_loss = F.mse_loss(q_values, t_value)
+        
+        # 为了使用F.cross_entropy，我们需要确保q_values是[batch_size, num_classes]的形状
+        # 在这个案例中，batch_size=1，所以我们需要添加一个维度来模拟它
+        q_values = q_values.unsqueeze(0)  # 将形状从[action_nums]变为[1, action_nums]
+        t_value = t_value.unsqueeze(0)  # 将形状从[action_nums]变为[1, action_nums]
+
+        # 计算交叉熵损失
+        max_indices = t_value.argmax(dim=1)
+        ce_loss = F.cross_entropy(q_values, max_indices.long())  # 确保max_indices是长整型，并且有一个额外的维度
+  
+
+        # 计算KLDivLoss
+        criterion_kl = torch.nn.KLDivLoss(reduction='batchmean')
+        log_probs = F.log_softmax(q_values, dim=1)
+        kl_loss = criterion_kl(log_probs, t_value)
+
+
+        # 组合两部分的损失
+        #loss = kl_loss + ce_loss
+        loss =  ce_loss
+
+
+
+        if batch_idx % 1501 == 0:
+            #print("****below outputs****\n")
+            #print(outputs['values'])
+            #print(torch.argmax(outputs['values'], dim=0)[0])
+            #print("****below action_probs****\n")
             #print(action_probs)
-            print(torch.argmax(action_probs, dim=0)[0])
+            #print(torch.argmax(action_probs, dim=0)[0])
+            pass
+
         loss.backward()
         optimizer.step()
         total_loss += loss.item()
 
-        if batch_idx % 1000 == 0:  # 这里的10是一个可调整的值，根据你的需求和数据集大小调整
-            print(total_loss/(batch_idx+1))
+        # 计算准确率
+        predicted = q_values.argmax(dim=1)  # 预测的最佳动作索引
+        correct_predictions += (predicted == max_indices).sum().item()
+        total_predictions += max_indices.size(0)
 
+        if batch_idx % 1000 == 0:
+            print(f"Average Loss: {total_loss/(batch_idx+1):.4f}")
+
+    accuracy = 100. * correct_predictions / total_predictions
+    print(f"Training Accuracy: {accuracy:.4f}%")
     return total_loss / len(train_loader)
+
 
 def print_grad_hook(grad):
     print(grad)
@@ -97,9 +137,9 @@ def main():
             print(f"No weight file found for {position} at {weight_file}, initializing from scratch.")
     
     optimizers = {
-        'landlord': AdamW(model_wrapper.get_model('landlord').parameters(), lr=1e-7),
-        'landlord_up': AdamW(model_wrapper.get_model('landlord_up').parameters(), lr=1e-7),
-        'landlord_down': AdamW(model_wrapper.get_model('landlord_down').parameters(), lr=1e-7)
+        'landlord': AdamW(model_wrapper.get_model('landlord').parameters(), lr=1e-4),
+        'landlord_up': AdamW(model_wrapper.get_model('landlord_up').parameters(), lr=1e-4),
+        'landlord_down': AdamW(model_wrapper.get_model('landlord_down').parameters(), lr=1e-4)
     }
 
     epochs = 10000
@@ -120,31 +160,32 @@ def main():
             torch.save(model_wrapper.get_model(position).state_dict(), f'{which_model}_{position}_model.ckpt')
 
         evaluate(f"{which_model}_landlord_model.ckpt",
-            f"random",
-            f"random",
+            f"/content/Douzero_Resnet/baselines/sl/landlord_up.ckpt",
+            f"/content/Douzero_Resnet/baselines/sl/landlord_down.ckpt",
             f"eval_data.pkl",
             8,
-            True,
+            False,
             False,
             "NEW")
 
-        evaluate(f"random",
+        evaluate(f"/content/Douzero_Resnet/baselines/sl/landlord.ckpt",
             f"{which_model}_landlord_up_model.ckpt",
             f"{which_model}_landlord_down_model.ckpt",
             f"eval_data.pkl",
             8,
-            True,
+            False,
             False,
             "NEW")
 
-        if (epoch+1)%3==0:
+
+        if (epoch+1)%10==0:
             print("正在生成新的数据...")
             eval_data = '/content/Douzero_Resnet/eval_data.pkl'
 
             print("output_pickle:", eval_data)
 
             data = []
-            for _ in range(5000):
+            for _ in range(1000):
                 data.append(generate())
 
             print("saving pickle file...")
@@ -161,7 +202,9 @@ def main():
             output_file = 'collected_soft_labels.pkl'
             
             collect_and_save_data(eval_data, card_play_model_path_dict, num_processes, output_file)
-
+            del data
+            with open('/content/Douzero_Resnet/collected_soft_labels.pkl', 'rb') as f:
+                data = pickle.load(f)
             
         
 if __name__ == '__main__':
