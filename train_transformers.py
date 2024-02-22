@@ -4,7 +4,7 @@ from torch.optim import AdamW
 import torch.nn.functional as F
 import pickle
 import numpy as np
-from douzero.dmc.models import ModelTransformer,ModelResNet  # 假设你的模型定义在model.py文件中
+from douzero.dmc.models import ModelTransformer,ModelResNet,OldModel  # 模型定义在model.py文件中
 from douzero.env.env import get_obs, _get_obs_transformer
 from tqdm import tqdm
 from douzero.evaluation.simulation import evaluate
@@ -119,9 +119,11 @@ def main():
 
     if which_model == "resnet":
         model_wrapper = ModelResNet(device='0' if str(device) == 'cuda' else 'cpu')
+    elif which_model == "lstm":
+        model_wrapper = OldModel(device='0' if str(device) == 'cuda' else 'cpu')
     else:
         model_wrapper = ModelTransformer(device='0' if str(device) == 'cuda' else 'cpu')
-    print(f"正在训练:{which_model}")
+    print(f"正在训练:{model_wrapper}")
     
     # 加载模型权重（如果存在）
     weight_files = {
@@ -210,4 +212,5 @@ def main():
 if __name__ == '__main__':
     #which_model = "resnet"
     which_model = "transformer"
+    #which_model = "lstm"
     main()
