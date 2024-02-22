@@ -385,6 +385,12 @@ class MultiConv1D(nn.Module):
         
         self.conv3 = nn.Conv1d(40, 80, kernel_size=7, stride=2, padding=3, bias=False)
         self.bn3 = nn.BatchNorm1d(80)
+
+        self.conv4 = nn.Conv1d(40, 80, kernel_size=9, stride=2, padding=4, bias=False)
+        self.bn4 = nn.BatchNorm1d(80)
+
+        self.conv5 = nn.Conv1d(40, 80, kernel_size=11, stride=2, padding=5, bias=False)
+        self.bn5 = nn.BatchNorm1d(80)
         
 
     def forward(self, z):
@@ -392,15 +398,21 @@ class MultiConv1D(nn.Module):
         history_features1 = F.relu(self.bn1(self.conv1(z)))
         history_features2 = F.relu(self.bn2(self.conv2(z)))
         history_features3 = F.relu(self.bn3(self.conv3(z)))
+        history_features4 = F.relu(self.bn4(self.conv4(z)))
+        history_features5 = F.relu(self.bn5(self.conv5(z)))
         
         # 合并特征
-        combined_features = torch.cat([history_features1, history_features2, history_features3], dim=1)
+        combined_features = torch.cat([history_features1, 
+                                    history_features2, 
+                                    history_features3,
+                                    history_features4,
+                                    history_features5], dim=1)
         
         return combined_features
 
 
 class GeneralModelTransformer(nn.Module):
-    def __init__(self, input_dim=240, d_model=64, nhead=8, num_encoder_layers=2, dim_feedforward=256, dropout=0.0, max_seq_length=27):
+    def __init__(self, input_dim=400, d_model=64, nhead=8, num_encoder_layers=2, dim_feedforward=256, dropout=0.0, max_seq_length=27):
         super(GeneralModelTransformer, self).__init__()
 
         self.cnn1d_multi =  MultiConv1D()
