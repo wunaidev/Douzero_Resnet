@@ -1165,9 +1165,11 @@ def update_features_based_on_action(position, my_action_batch, my_handcards_batc
         num_cards_left = num_cards_left_batch[i]
         bomb_num = np.argmax(bomb_num_batch[i])
 
+        '''
         # 打印动作前的状态
         print(f"num {i+1}: action {action}")
         print(f"Before - Handcards: {my_handcards}, Num Cards Left: {num_cards_left}, Bomb Num: {bomb_num}")
+        '''
 
         # 更新手牌状态
         my_handcards -= action
@@ -1179,11 +1181,19 @@ def update_features_based_on_action(position, my_action_batch, my_handcards_batc
         num_cards_left[index_start:index_end] = 0  # 重置当前位置的剩余牌数
         num_cards_left[index_start + new_cards_left] = 1  # 更新剩余牌数的one-hot编码
 
+        def is_bomb(action):
+            # 检查是否为四张相同的牌
+            if np.max(action) == 1 and np.sum(action) == 4:
+                unique_cards = np.where(action == 1)[0]
+                if len(unique_cards) == 1:
+                    return True  # 四张相同的牌构成炸弹
+            # 检查王炸
+            if action[-2] == 1 and action[-1] == 1:  # 假设最后两位是小王和大王
+                return True  # 王炸
+            return False  # 不是炸弹
+
         # 检查是否为炸弹并更新炸弹数量
-        if np.sum(action) == 4 and np.sum(action[action > 0] == 1) == 4:
-            bomb_num += 1
-        # 检查王炸
-        if action[-2] > 0 and action[-1] > 0:  # 假设最后两位是小王和大王
+        if is_bomb(action):
             bomb_num += 1
 
         # 将bomb_num转换回one-hot编码
@@ -1194,9 +1204,10 @@ def update_features_based_on_action(position, my_action_batch, my_handcards_batc
         my_handcards_batch[i] = my_handcards
         num_cards_left_batch[i] = num_cards_left
 
+        '''
         # 打印动作后的状态
         print(f"After  - Handcards: {my_handcards}, Num Cards Left: {num_cards_left}, Bomb Num: {np.argmax(bomb_num_batch[i])}")
-
+        '''
 
     return my_handcards_batch, num_cards_left_batch, bomb_num_batch
 
@@ -1300,14 +1311,14 @@ def _get_obs_transformer(infoset, position):
 
     
     #根据打出的牌修改场况
-    print(f"*********my_handcards:{my_handcards.shape}")
+    #print(f"*********my_handcards:{my_handcards.shape}")
     my_handcards_batch, num_cards_left_batch, bomb_num_batch = update_features_based_on_action(
                                             position,
                                             my_action_batch, 
                                             my_handcards_batch, 
                                             num_cards_left_batch, 
                                             bomb_num_batch)
-    print(f"$$$$$$$$my_handcards:{my_handcards.shape}")
+    #print(f"$$$$$$$$my_handcards:{my_handcards.shape}")
 
     x_batch = np.hstack((
                          bid_info_batch,  # 12

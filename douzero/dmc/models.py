@@ -435,13 +435,13 @@ class GeneralModelTransformer(nn.Module):
         # 添加批量归一化层
         #self.bn_combined_features = nn.BatchNorm1d(self.history_encoder_dim + self.scene_encoder_dim + numeric_embed_dim * 3 + numeric_embed_dim)  # 新增加的BN层，维度是所有融合特征的维度之和
         #self.bn_combined_features = nn.BatchNorm1d(self.att_fusion_dim + d_model * max_seq_length + d_model)  
-        self.bn_combined_features = nn.BatchNorm1d(3909) 
+        self.bn_combined_features = nn.BatchNorm1d(3924) 
         self.bn_history_features = nn.BatchNorm1d(d_model * max_seq_length)
         self.bn_action_features = nn.BatchNorm1d(d_model)
         #self.linear1 = nn.Linear(self.history_encoder_dim + self.scene_encoder_dim + numeric_embed_dim * 3 + numeric_embed_dim, 1024)
         # 更新linear1的输入维度，因为我们现在使用Attention融合特征
         #self.linear1 = nn.Linear(self.att_fusion_dim + d_model * max_seq_length + d_model, 512)  # 假设融合后的维度为fusion_dim
-        self.linear1 = nn.Linear(3909, 1024)
+        self.linear1 = nn.Linear(3924, 1024)
         self.linear2 = nn.Linear(1024, 512)
         self.linear3 = nn.Linear(512, 256)
         self.linear4 = nn.Linear(256, 1)
