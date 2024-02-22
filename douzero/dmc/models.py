@@ -376,14 +376,14 @@ class MultiConv1D(nn.Module):
     def __init__(self):
         super(MultiConv1D, self).__init__()
         # 原始卷积层
-        self.conv1 = nn.Conv1d(39, 20, kernel_size=3, stride=2, padding=1, bias=False)
+        self.conv1 = nn.Conv1d(40, 20, kernel_size=3, stride=2, padding=1, bias=False)
         self.bn1 = nn.BatchNorm1d(20)
         
         # 新增卷积层，具有不同的kernel_size和stride
-        self.conv2 = nn.Conv1d(39, 20, kernel_size=5, stride=2, padding=2, bias=False)
+        self.conv2 = nn.Conv1d(40, 20, kernel_size=5, stride=2, padding=2, bias=False)
         self.bn2 = nn.BatchNorm1d(20)
         
-        self.conv3 = nn.Conv1d(39, 20, kernel_size=7, stride=2, padding=3, bias=False)
+        self.conv3 = nn.Conv1d(40, 20, kernel_size=7, stride=2, padding=3, bias=False)
         self.bn3 = nn.BatchNorm1d(20)
         
 
