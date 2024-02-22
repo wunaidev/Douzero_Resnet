@@ -328,7 +328,7 @@ class AttentionFusionLayer(nn.Module):
     def __init__(self, history_dim, combined_dim, fusion_dim):
         super(AttentionFusionLayer, self).__init__()
         self.history_dim = history_dim
-        self.combined_dim = combined_dim  # 新的参数，代表场景特征和数值特征合并后的维度
+        self.combined_dim = combined_dim
         self.fusion_dim = fusion_dim
 
         # 对每种特征使用不同的线性层进行维度转换
@@ -392,10 +392,10 @@ class MultiConv1D(nn.Module):
 
     def forward(self, z):
         # 通过各个卷积层
-        history_features1 = F.relu(self.bn1(self.conv1(z)))
-        history_features2 = F.relu(self.bn2(self.conv2(z)))
-        history_features3 = F.relu(self.bn3(self.conv3(z)))
-        history_features4 = F.relu(self.bn4(self.conv4(z)))
+        history_features1 = F.gelu(self.bn1(self.conv1(z)))
+        history_features2 = F.gelu(self.bn2(self.conv2(z)))
+        history_features3 = F.gelu(self.bn3(self.conv3(z)))
+        history_features4 = F.gelu(self.bn4(self.conv4(z)))
         #history_features5 = F.relu(self.bn5(self.conv5(z)))
         #history_features6 = F.relu(self.bn6(self.conv6(z)))
         #history_features7 = F.relu(self.bn7(self.conv7(z)))
@@ -453,9 +453,11 @@ class GeneralModelTransformer(nn.Module):
         # 添加批量归一化层
         #self.bn_combined_features = nn.BatchNorm1d(self.history_encoder_dim + self.scene_encoder_dim + numeric_embed_dim * 3 + numeric_embed_dim)  # 新增加的BN层，维度是所有融合特征的维度之和
         #self.bn_combined_features = nn.BatchNorm1d(self.att_fusion_dim + d_model * max_seq_length + d_model)  
+
         self.bn_combined_features = nn.BatchNorm1d(1881) 
         self.bn_history_features = nn.BatchNorm1d(d_model * max_seq_length)
         self.bn_action_features = nn.BatchNorm1d(d_model)
+
         #self.linear1 = nn.Linear(self.history_encoder_dim + self.scene_encoder_dim + numeric_embed_dim * 3 + numeric_embed_dim, 1024)
         # 更新linear1的输入维度，因为我们现在使用Attention融合特征
         #self.linear1 = nn.Linear(self.att_fusion_dim + d_model * max_seq_length + d_model, 512)  # 假设融合后的维度为fusion_dim
@@ -468,12 +470,9 @@ class GeneralModelTransformer(nn.Module):
         # z: (action_nums, seq_len, features)
         # Extract features from z
         #print(z.shape)
-        
-        
-        history_features = self.cnn1d_multi(z) #(action_nums, 320, 27)
-        #print(history_features.shape)
 
-        #history_features = z #(action_nums, 40, 54)
+
+        #z #(action_nums, 40, 54)
 
         '''
         history_features = z[:, 2:, :]  # Last 32 seq_len for history  + 2-7 scene_features
@@ -509,6 +508,9 @@ class GeneralModelTransformer(nn.Module):
 
         #print(history_features.shape) #(bz, 43, 64)
         '''
+
+        history_features = self.cnn1d_multi(z) #(action_nums, 320, 27)
+        #print(history_features.shape)
         
         history_features=history_features.permute(0, 2, 1) #(bz, channels, feature) ->  #(batch, feature, channels)，
         # 因为1d卷积破坏了原有通道上的联系，但是特征维度上都是相邻卷积卷出来的，依然存在联系，
@@ -535,7 +537,7 @@ class GeneralModelTransformer(nn.Module):
 
 
         #combined_features1 = self.attention_fusion(action_features, history_features)
-        #combined_features2 = self.attention_fusion2(history_features, action_features)
+        #combined_features = self.attention_fusion(history_features, x)
         #print(torch.equal(combined_features[0], combined_features[1])) #true
 
         #combined_features = torch.cat([combined_features1, combined_features2, history_features, action_features], dim=-1)
@@ -554,8 +556,9 @@ class GeneralModelTransformer(nn.Module):
         out = self.linear3(out)
         out = F.gelu(out)
         
-        out = F.selu(self.linear4(out))
-        
+        #out = F.selu(self.linear4(out))
+        out = self.linear4(out)
+
         if return_value:
             return dict(values=out)
         else:

@@ -1353,8 +1353,14 @@ def _get_obs_transformer(infoset, position):
     z_batch = np.zeros([len(_z_batch),40,54],int)
     for i in range(0,len(_z_batch)):
         z_batch[i] = np.vstack((my_action_batch[i],
+                                #my_action_batch[i] - my_action_batch.mean(axis=0),
                                 updated_handcards_batch[i],
                                 _z_batch[i]))
+
+        #print(f"my_action_batch[i]:{my_action_batch[i]}")
+        #print(f"after mean:{my_action_batch[i] - my_action_batch.mean(axis=0)}")
+
+
 
     obs = {
         'position': position,
