@@ -58,6 +58,7 @@ def simulate_game(card_play_data_list, card_play_model_path_dict, data_collectio
             
             action = env.step()
 
+            '''
             if count % 3 == 2:
                     end = "\n"
             else:
@@ -67,6 +68,7 @@ def simulate_game(card_play_data_list, card_play_model_path_dict, data_collectio
             else:
                 print("".join([EnvCard2RealCard[c] for c in action]), end=end)
             count+=1
+            '''
         
         env.reset()
 

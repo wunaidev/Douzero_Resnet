@@ -208,6 +208,6 @@ def main():
             
         
 if __name__ == '__main__':
-    which_model = "resnet"
-    #which_model = "transformer"
+    #which_model = "resnet"
+    which_model = "transformer"
     main()
