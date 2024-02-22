@@ -1150,12 +1150,20 @@ def _get_obs_general(infoset, position):
     return obs
 
 
-def update_features_based_on_action(my_action_batch, my_handcards_batch, num_cards_left_batch, bomb_num_batch):
+def update_features_based_on_action(position, my_action_batch, my_handcards_batch, num_cards_left_batch, bomb_num_batch):
+    # 根据position确定更新num_cards_left_batch的哪一部分
+    if position == 'landlord':
+        index_start, index_end = 0, 20
+    elif position == 'landlord_up':
+        index_start, index_end = 20, 37
+    else:  # position == 'landlord_down'
+        index_start, index_end = 37, 54
+
     for i in range(my_action_batch.shape[0]):
-        action = my_action_batch[i].astype(np.int8)  # 确保action为int8类型
+        action = my_action_batch[i].astype(np.int8)
         my_handcards = my_handcards_batch[i]
         num_cards_left = num_cards_left_batch[i]
-        bomb_num = np.argmax(bomb_num_batch[i])  # 从one-hot转换为标量
+        bomb_num = np.argmax(bomb_num_batch[i])
 
         # 打印动作前的状态
         print(f"num {i+1}: action {action}")
@@ -1166,7 +1174,10 @@ def update_features_based_on_action(my_action_batch, my_handcards_batch, num_car
 
         # 更新剩余牌数
         num_cards_played = np.sum(action)  # 计算此动作中打出的牌数
-        num_cards_left -= num_cards_played
+        current_cards_left = np.argmax(num_cards_left[index_start:index_end])  # 获取当前剩余牌数
+        new_cards_left = max(0, current_cards_left - num_cards_played)  # 更新剩余牌数
+        num_cards_left[index_start:index_end] = 0  # 重置当前位置的剩余牌数
+        num_cards_left[index_start + new_cards_left] = 1  # 更新剩余牌数的one-hot编码
 
         # 检查是否为炸弹并更新炸弹数量
         if np.sum(action) == 4 and np.sum(action[action > 0] == 1) == 4:
@@ -1182,13 +1193,14 @@ def update_features_based_on_action(my_action_batch, my_handcards_batch, num_car
         # 将更新后的值写回批处理数组
         my_handcards_batch[i] = my_handcards
         num_cards_left_batch[i] = num_cards_left
-        
+
         # 打印动作后的状态
         print(f"After  - Handcards: {my_handcards}, Num Cards Left: {num_cards_left}, Bomb Num: {np.argmax(bomb_num_batch[i])}")
 
 
-
     return my_handcards_batch, num_cards_left_batch, bomb_num_batch
+
+
 
 
 # ******************for transformer**************************
@@ -1251,7 +1263,7 @@ def _get_obs_transformer(infoset, position):
         num_legal_actions, axis=0)
 
     other_handcards_left_list = []
-    for pos in ["landlord", "landlord_up", "landlord_up"]:
+    for pos in ["landlord", "landlord_up", "landlord_down"]:
         if pos != position:
             other_handcards_left_list.extend(infoset.all_handcards[pos])
 
@@ -1288,7 +1300,14 @@ def _get_obs_transformer(infoset, position):
 
     
     #根据打出的牌修改场况
-    my_handcards, num_cards_left, bomb_num = update_features_based_on_action(my_action_batch, my_handcards_batch, num_cards_left_batch, bomb_num_batch)
+    print(f"*********my_handcards:{my_handcards.shape}")
+    my_handcards_batch, num_cards_left_batch, bomb_num_batch = update_features_based_on_action(
+                                            position,
+                                            my_action_batch, 
+                                            my_handcards_batch, 
+                                            num_cards_left_batch, 
+                                            bomb_num_batch)
+    print(f"$$$$$$$$my_handcards:{my_handcards.shape}")
 
     x_batch = np.hstack((
                          bid_info_batch,  # 12
