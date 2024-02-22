@@ -376,15 +376,15 @@ class MultiConv1D(nn.Module):
     def __init__(self):
         super(MultiConv1D, self).__init__()
         # 原始卷积层
-        self.conv1 = nn.Conv1d(40, 20, kernel_size=3, stride=2, padding=1, bias=False)
-        self.bn1 = nn.BatchNorm1d(20)
+        self.conv1 = nn.Conv1d(40, 80, kernel_size=3, stride=2, padding=1, bias=False)
+        self.bn1 = nn.BatchNorm1d(80)
         
         # 新增卷积层，具有不同的kernel_size和stride
-        self.conv2 = nn.Conv1d(40, 20, kernel_size=5, stride=2, padding=2, bias=False)
-        self.bn2 = nn.BatchNorm1d(20)
+        self.conv2 = nn.Conv1d(40, 80, kernel_size=5, stride=2, padding=2, bias=False)
+        self.bn2 = nn.BatchNorm1d(80)
         
-        self.conv3 = nn.Conv1d(40, 20, kernel_size=7, stride=2, padding=3, bias=False)
-        self.bn3 = nn.BatchNorm1d(20)
+        self.conv3 = nn.Conv1d(40, 80, kernel_size=7, stride=2, padding=3, bias=False)
+        self.bn3 = nn.BatchNorm1d(80)
         
 
     def forward(self, z):
@@ -400,7 +400,7 @@ class MultiConv1D(nn.Module):
 
 
 class GeneralModelTransformer(nn.Module):
-    def __init__(self, input_dim=27, d_model=64, nhead=8, num_encoder_layers=2, dim_feedforward=256, dropout=0.0, max_seq_length=60):
+    def __init__(self, input_dim=240, d_model=64, nhead=8, num_encoder_layers=2, dim_feedforward=256, dropout=0.0, max_seq_length=27):
         super(GeneralModelTransformer, self).__init__()
 
         self.cnn1d_multi =  MultiConv1D()
@@ -411,7 +411,7 @@ class GeneralModelTransformer(nn.Module):
         self.transformer_encoder_history = TransformerEncoder(encoder_layers, num_encoder_layers)
         self.transformer_encoder_scene = TransformerEncoder(encoder_layers, num_encoder_layers)
 
-        self.x_dim = 15 + 54 + 15  # Adjust based on your input dimension for x
+        self.x_dim = 15 + 54 + 15 + 54 + 15 # Adjust based on your input dimension for x
         self.history_encoder_dim = d_model * 32
         self.scene_encoder_dim = d_model * 7
 
@@ -435,13 +435,13 @@ class GeneralModelTransformer(nn.Module):
         # 添加批量归一化层
         #self.bn_combined_features = nn.BatchNorm1d(self.history_encoder_dim + self.scene_encoder_dim + numeric_embed_dim * 3 + numeric_embed_dim)  # 新增加的BN层，维度是所有融合特征的维度之和
         #self.bn_combined_features = nn.BatchNorm1d(self.att_fusion_dim + d_model * max_seq_length + d_model)  
-        self.bn_combined_features = nn.BatchNorm1d(3924) 
+        self.bn_combined_features = nn.BatchNorm1d(1881) 
         self.bn_history_features = nn.BatchNorm1d(d_model * max_seq_length)
         self.bn_action_features = nn.BatchNorm1d(d_model)
         #self.linear1 = nn.Linear(self.history_encoder_dim + self.scene_encoder_dim + numeric_embed_dim * 3 + numeric_embed_dim, 1024)
         # 更新linear1的输入维度，因为我们现在使用Attention融合特征
         #self.linear1 = nn.Linear(self.att_fusion_dim + d_model * max_seq_length + d_model, 512)  # 假设融合后的维度为fusion_dim
-        self.linear1 = nn.Linear(3924, 1024)
+        self.linear1 = nn.Linear(1881, 1024)
         self.linear2 = nn.Linear(1024, 512)
         self.linear3 = nn.Linear(512, 256)
         self.linear4 = nn.Linear(256, 1)
@@ -488,6 +488,10 @@ class GeneralModelTransformer(nn.Module):
         #print(history_features.shape) #(bz, 43, 64)
         '''
         
+        history_features=history_features.permute(0, 2, 1) #(bz, channels, feature) ->  #(batch, feature, channels)，
+        # 因为1d卷积破坏了原有通道上的联系，但是特征维度上都是相邻卷积卷出来的，依然存在联系，
+        # 所以把特征维度作为Transformer的seq_len，求它们的关联度
+
         history_features = self.input_proj(history_features)
 
         history_features = history_features.permute(1, 0, 2)  # Change to (seq_length, batch, features)

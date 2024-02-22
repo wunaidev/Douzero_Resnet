@@ -1313,9 +1313,9 @@ def _get_obs_transformer(infoset, position):
     # 根据打出的牌修改场况
     # 注意这里接收的都被覆盖成了更新后的变量，除了my_handcards_batch
     # my_handcards_batch被更名成了updated_handcards_batch
-    # 因为我希望两个都保留送进网络
+    # 两个都保留一起送进网络,可以提点
     #print(f"*********my_handcards:{my_handcards.shape}")
-    updated_handcards_batch, num_cards_left_batch, bomb_num_batch = update_features_based_on_action(
+    updated_handcards_batch, updated_num_cards_left_batch, updated_bomb_num_batch = update_features_based_on_action(
                                             position,
                                             my_action_batch, 
                                             my_handcards_batch, 
@@ -1327,7 +1327,9 @@ def _get_obs_transformer(infoset, position):
                          bid_info_batch,  # 12
                          multiply_info_batch, # 3
                          num_cards_left_batch, #54
-                         bomb_num_batch)) #15
+                         bomb_num_batch, #15
+                         updated_num_cards_left_batch, #54
+                         updated_bomb_num_batch)) #15
     x_no_action = np.hstack((
                              bid_info,
                              multiply_info))
