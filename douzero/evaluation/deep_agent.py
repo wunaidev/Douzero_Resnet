@@ -6,7 +6,7 @@ from douzero.env.env import get_obs
 def _load_model(position, model_path, model_type):
     from douzero.dmc.models import model_dict_new, model_dict, model_dict_transformer
     model = None
-    if model_type == "general":
+    if model_type == "resnet":
         model = model_dict_new[position]()
     elif model_type == "transformer":
         model = model_dict_transformer[position]()
@@ -30,7 +30,7 @@ class DeepAgent:
 
     def __init__(self, position, model_path):
         if "resnet" in model_path:
-            self.model_type = "general"
+            self.model_type = "resnet"
         elif "transformer" in model_path:
             self.model_type = "transformer"
         else:
@@ -45,8 +45,8 @@ class DeepAgent:
         if len(infoset.legal_actions) == 1:
             return infoset.legal_actions[0]
 
-        #obs = get_obs(infoset, self.model_type == "general")
-        obs = get_obs(infoset, self.model_type in ["general", "transformer"])
+        #obs = get_obs(infoset, self.model_type == "resnet")
+        obs = get_obs(infoset, self.model_type)
 
         z_batch = torch.from_numpy(obs['z_batch']).float()
         x_batch = torch.from_numpy(obs['x_batch']).float()

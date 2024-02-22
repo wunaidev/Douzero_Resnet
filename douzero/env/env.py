@@ -366,7 +366,7 @@ class DummyAgent(object):
         self.action = action
 
 
-def get_obs(infoset, use_general=True):
+def get_obs(infoset, model_type="resnet"):
     """
     This function obtains observations with imperfect information
     from the infoset. It has three branches since we encode
@@ -390,11 +390,17 @@ def get_obs(infoset, use_general=True):
 
     `z`: same as z_batch but not a batch.
     """
-    if use_general:
+    #print(f"正在加载{model_type}版的数据！")
+    if model_type == "transformer":
+        if infoset.player_position not in ["landlord", "landlord_up", "landlord_down"]:
+            raise ValueError('')
+        return _get_obs_transformer(infoset, infoset.player_position)
+    elif model_type == "resnet":
         if infoset.player_position not in ["landlord", "landlord_up", "landlord_down"]:
             raise ValueError('')
         return _get_obs_general(infoset, infoset.player_position)
     else:
+        #print(f"{model_type}不属于resnet和tranformer，正在加载LTSM的数据！")
         if infoset.player_position == 'landlord':
             return _get_obs_landlord(infoset)
         elif infoset.player_position == 'landlord_up':
@@ -1145,6 +1151,7 @@ def _get_obs_general(infoset, position):
 
 # ******************for transformer**************************
 def _get_obs_transformer(infoset, position):
+    #print(f"position:{position}")
     num_legal_actions = len(infoset.legal_actions)
     my_handcards = _cards2array(infoset.player_hand_cards)
     my_handcards_batch = np.repeat(my_handcards[np.newaxis, :],
@@ -1233,15 +1240,19 @@ def _get_obs_transformer(infoset, position):
                          landlord_num_cards_left,  # 20
                          landlord_up_num_cards_left,  # 17
                          landlord_down_num_cards_left))
+    num_cards_left_batch = np.repeat(
+                         num_cards_left[np.newaxis, :],
+                         num_legal_actions, axis=0)
 
     x_batch = np.hstack((
                          bid_info_batch,  # 12
-                         multiply_info_batch))  # 3
+                         multiply_info_batch, # 3
+                         num_cards_left_batch, #54
+                         bomb_num_batch)) #15
     x_no_action = np.hstack((
                              bid_info,
                              multiply_info))
     z =np.vstack((
-                  num_cards_left,
                   my_handcards,  # 54
                   other_handcards,  # 54
                   three_landlord_cards,  # 54
@@ -1251,14 +1262,14 @@ def _get_obs_transformer(infoset, position):
                   _action_seq_list2array(_process_action_seq(infoset.card_play_action_seq, 32))
                   ))
 
-    print(f"zshape:{z.shape}")
+    #print(f"zshape:{z.shape}")
 
     _z_batch = np.repeat(
         z[np.newaxis, :, :],
         num_legal_actions, axis=0)
 
     my_action_batch = my_action_batch[:,np.newaxis,:]
-    z_batch = np.zeros([len(_z_batch),40,54],int)
+    z_batch = np.zeros([len(_z_batch),39,54],int)
     for i in range(0,len(_z_batch)):
         z_batch[i] = np.vstack((my_action_batch[i],_z_batch[i]))
 

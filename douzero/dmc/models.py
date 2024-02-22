@@ -376,14 +376,14 @@ class MultiConv1D(nn.Module):
     def __init__(self):
         super(MultiConv1D, self).__init__()
         # 原始卷积层
-        self.conv1 = nn.Conv1d(40, 20, kernel_size=3, stride=2, padding=1, bias=False)
+        self.conv1 = nn.Conv1d(39, 20, kernel_size=3, stride=2, padding=1, bias=False)
         self.bn1 = nn.BatchNorm1d(20)
         
         # 新增卷积层，具有不同的kernel_size和stride
-        self.conv2 = nn.Conv1d(40, 20, kernel_size=5, stride=2, padding=2, bias=False)
+        self.conv2 = nn.Conv1d(39, 20, kernel_size=5, stride=2, padding=2, bias=False)
         self.bn2 = nn.BatchNorm1d(20)
         
-        self.conv3 = nn.Conv1d(40, 20, kernel_size=7, stride=2, padding=3, bias=False)
+        self.conv3 = nn.Conv1d(39, 20, kernel_size=7, stride=2, padding=3, bias=False)
         self.bn3 = nn.BatchNorm1d(20)
         
 
@@ -411,7 +411,7 @@ class GeneralModelTransformer(nn.Module):
         self.transformer_encoder_history = TransformerEncoder(encoder_layers, num_encoder_layers)
         self.transformer_encoder_scene = TransformerEncoder(encoder_layers, num_encoder_layers)
 
-        self.x_dim = 15  # Adjust based on your input dimension for x
+        self.x_dim = 15 + 54 + 15  # Adjust based on your input dimension for x
         self.history_encoder_dim = d_model * 32
         self.scene_encoder_dim = d_model * 7
 
@@ -435,13 +435,13 @@ class GeneralModelTransformer(nn.Module):
         # 添加批量归一化层
         #self.bn_combined_features = nn.BatchNorm1d(self.history_encoder_dim + self.scene_encoder_dim + numeric_embed_dim * 3 + numeric_embed_dim)  # 新增加的BN层，维度是所有融合特征的维度之和
         #self.bn_combined_features = nn.BatchNorm1d(self.att_fusion_dim + d_model * max_seq_length + d_model)  
-        self.bn_combined_features = nn.BatchNorm1d(3855) 
+        self.bn_combined_features = nn.BatchNorm1d(3909) 
         self.bn_history_features = nn.BatchNorm1d(d_model * max_seq_length)
         self.bn_action_features = nn.BatchNorm1d(d_model)
         #self.linear1 = nn.Linear(self.history_encoder_dim + self.scene_encoder_dim + numeric_embed_dim * 3 + numeric_embed_dim, 1024)
         # 更新linear1的输入维度，因为我们现在使用Attention融合特征
         #self.linear1 = nn.Linear(self.att_fusion_dim + d_model * max_seq_length + d_model, 512)  # 假设融合后的维度为fusion_dim
-        self.linear1 = nn.Linear(3855, 1024)
+        self.linear1 = nn.Linear(3909, 1024)
         self.linear2 = nn.Linear(1024, 512)
         self.linear3 = nn.Linear(512, 256)
         self.linear4 = nn.Linear(256, 1)

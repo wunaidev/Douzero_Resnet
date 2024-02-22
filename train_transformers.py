@@ -5,7 +5,7 @@ import torch.nn.functional as F
 import pickle
 import numpy as np
 from douzero.dmc.models import ModelTransformer,ModelResNet  # 假设你的模型定义在model.py文件中
-from douzero.env.env import get_obs
+from douzero.env.env import get_obs, _get_obs_transformer
 from tqdm import tqdm
 from douzero.evaluation.simulation import evaluate
 from generate_eval_data import generate
@@ -22,7 +22,7 @@ class DouzeroDataset(Dataset):
         item = self.data[idx]
         position = item['position']
 
-        obs = _get_obs_transformer(item['game_state'], use_general=True)
+        obs = get_obs(item['game_state'], model_type=which_model)
         z = torch.from_numpy(obs['z_batch']).float()
         x = torch.from_numpy(obs['x_batch']).float()
 
@@ -158,7 +158,7 @@ def main():
             print(f"Loss: {total_loss:.4f}")
             # 保存模型
             torch.save(model_wrapper.get_model(position).state_dict(), f'{which_model}_{position}_model.ckpt')
-
+        '''
         evaluate(f"{which_model}_landlord_model.ckpt",
             f"/content/Douzero_Resnet/baselines/sl/landlord_up.ckpt",
             f"/content/Douzero_Resnet/baselines/sl/landlord_down.ckpt",
@@ -176,9 +176,9 @@ def main():
             False,
             False,
             "NEW")
+        '''
 
-
-        if (epoch+1)%10==0:
+        if (epoch+1)%1==0:
             print("正在生成新的数据...")
             eval_data = '/content/Douzero_Resnet/eval_data.pkl'
 
@@ -208,6 +208,6 @@ def main():
             
         
 if __name__ == '__main__':
-    #which_model = "resnet"
-    which_model = "transformer"
+    which_model = "resnet"
+    #which_model = "transformer"
     main()
