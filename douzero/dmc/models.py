@@ -307,7 +307,7 @@ class GeneralModel(nn.Module):
 
 ###尝试Transformer
 class PositionalEncoding(nn.Module):
-    def __init__(self, d_model, dropout=0.0, max_len=60):
+    def __init__(self, d_model, dropout=0.0, max_len=27):
         super(PositionalEncoding, self).__init__()
         self.dropout = nn.Dropout(p=dropout)
 
@@ -388,9 +388,6 @@ class MultiConv1D(nn.Module):
 
         self.conv4 = nn.Conv1d(40, 80, kernel_size=9, stride=2, padding=4, bias=False)
         self.bn4 = nn.BatchNorm1d(80)
-
-        self.conv5 = nn.Conv1d(40, 80, kernel_size=11, stride=2, padding=5, bias=False)
-        self.bn5 = nn.BatchNorm1d(80)
         
 
     def forward(self, z):
@@ -399,20 +396,29 @@ class MultiConv1D(nn.Module):
         history_features2 = F.relu(self.bn2(self.conv2(z)))
         history_features3 = F.relu(self.bn3(self.conv3(z)))
         history_features4 = F.relu(self.bn4(self.conv4(z)))
-        history_features5 = F.relu(self.bn5(self.conv5(z)))
+        #history_features5 = F.relu(self.bn5(self.conv5(z)))
+        #history_features6 = F.relu(self.bn6(self.conv6(z)))
+        #history_features7 = F.relu(self.bn7(self.conv7(z)))
+        #history_features8 = F.relu(self.bn8(self.conv8(z)))
+        #history_features9 = F.relu(self.bn9(self.conv9(z)))
         
         # 合并特征
         combined_features = torch.cat([history_features1, 
                                     history_features2, 
                                     history_features3,
                                     history_features4,
-                                    history_features5], dim=1)
+                                    #history_features5,
+                                    #history_features6, 
+                                    #history_features7,
+                                    #history_features8,
+                                    #history_features9
+                                    ], dim=1)
         
         return combined_features
 
 
 class GeneralModelTransformer(nn.Module):
-    def __init__(self, input_dim=400, d_model=64, nhead=8, num_encoder_layers=2, dim_feedforward=256, dropout=0.0, max_seq_length=27):
+    def __init__(self, input_dim=320, d_model=64, nhead=16, num_encoder_layers=2, dim_feedforward=256, dropout=0.0, max_seq_length=27):
         super(GeneralModelTransformer, self).__init__()
 
         self.cnn1d_multi =  MultiConv1D()
@@ -453,7 +459,7 @@ class GeneralModelTransformer(nn.Module):
         #self.linear1 = nn.Linear(self.history_encoder_dim + self.scene_encoder_dim + numeric_embed_dim * 3 + numeric_embed_dim, 1024)
         # 更新linear1的输入维度，因为我们现在使用Attention融合特征
         #self.linear1 = nn.Linear(self.att_fusion_dim + d_model * max_seq_length + d_model, 512)  # 假设融合后的维度为fusion_dim
-        self.linear1 = nn.Linear(1881, 1024)
+        self.linear1 = nn.Linear(1881 , 1024)
         self.linear2 = nn.Linear(1024, 512)
         self.linear3 = nn.Linear(512, 256)
         self.linear4 = nn.Linear(256, 1)
