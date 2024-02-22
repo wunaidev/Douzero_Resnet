@@ -323,6 +323,25 @@ class PositionalEncoding(nn.Module):
         x = x + self.pe[:x.size(0), :]
         return self.dropout(x)
 
+class CustomPositionalEncoding(nn.Module):
+    def __init__(self, d_model, dropout=0.0, max_len=27):
+        super(CustomPositionalEncoding, self).__init__()
+        self.dropout = nn.Dropout(p=dropout)
+
+        # 使用线性映射作为示例
+        pe = torch.linspace(0, 1, steps=max_len).unsqueeze(1).repeat(1, d_model)
+        self.register_buffer('pe', pe)
+
+    def forward(self, x):
+        # 获取输入x的序列长度
+        seq_len = x.size(1)  # 注意这里使用的是size(1)，对应于seq_len
+        
+        # 确保位置编码与输入x的序列长度匹配
+        pe = self.pe[:seq_len, :]  # 调整位置编码的长度以匹配输入x的序列长度
+        
+        # 将位置编码添加到输入x上
+        x = x + pe.unsqueeze(0)  # 扩展维度以匹配批次大小
+        return self.dropout(x)
 
 class AttentionFusionLayer(nn.Module):
     def __init__(self, history_dim, combined_dim, fusion_dim):
@@ -424,7 +443,7 @@ class GeneralModelTransformer(nn.Module):
         self.cnn1d_multi =  MultiConv1D()
 
         self.input_proj = nn.Linear(input_dim, d_model)
-        self.pos_encoder = PositionalEncoding(d_model, dropout, max_seq_length)
+        self.pos_encoder = CustomPositionalEncoding(d_model, dropout, max_seq_length)
         encoder_layers = TransformerEncoderLayer(d_model, nhead, dim_feedforward, dropout)
         self.transformer_encoder_history = TransformerEncoder(encoder_layers, num_encoder_layers)
         self.transformer_encoder_scene = TransformerEncoder(encoder_layers, num_encoder_layers)
@@ -468,8 +487,12 @@ class GeneralModelTransformer(nn.Module):
         # z: (action_nums, seq_len, features)
         # Extract features from z
         #print(z.shape)
-        history_features = self.cnn1d_multi(z) #(action_nums, 60, 27)
+        
+        
+        history_features = self.cnn1d_multi(z) #(action_nums, 320, 27)
         #print(history_features.shape)
+
+        #history_features = z #(action_nums, 40, 54)
 
         '''
         history_features = z[:, 2:, :]  # Last 32 seq_len for history  + 2-7 scene_features
@@ -511,12 +534,12 @@ class GeneralModelTransformer(nn.Module):
         # 所以把特征维度作为Transformer的seq_len，求它们的关联度
 
         history_features = self.input_proj(history_features)
-
-        history_features = history_features.permute(1, 0, 2)  # Change to (seq_length, batch, features)
-        #history_features = self.pos_encoder(history_features) #是否需要pos encoder存疑
+        history_features = self.pos_encoder(history_features) #是否需要pos encoder存疑
+        
+        history_features = history_features.permute(1, 0, 2)  # Change to [feature（作为tranformer的seq）, batch, channels(作为tranformer的dim)]
         history_features = self.transformer_encoder_history(history_features)
         
-        history_features = history_features.permute(1, 2, 0)  
+        history_features = history_features.permute(1, 2, 0)  # Change to [ batch, channels(作为tranformer的dim), feature（作为tranformer的seq）,]
 
         #transformed_action = action_features[:,0:1].flatten(1)
 
