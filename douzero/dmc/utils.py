@@ -118,10 +118,17 @@ def act(i, device, batch_queues, model, flags):
                 #print(type(agent_output))
                 _action_idx = int(agent_output['action'].cpu().detach().numpy())
                 action = obs['legal_actions'][_action_idx]
+
+                #print(type(env_output))
+                #print(env_output.keys())
+
                 obs_z_buf[position].append(torch.vstack((_cards2tensor(action).unsqueeze(0), env_output['obs_z'])).float())
                 # x_batch = torch.cat((env_output['obs_x_no_action'], _cards2tensor(action)), dim=0).float()
                 x_batch = env_output['obs_x_no_action'].float()
                 obs_x_batch_buf[position].append(x_batch)
+                
+                #obs_z_buf[position].append(torch.vstack(env_output['obs_z']
+
                 type_buf[position].append(position_index[position])
                 position, obs, env_output = env.step(action, model, device, flags=flags)
                 size[position] += 1

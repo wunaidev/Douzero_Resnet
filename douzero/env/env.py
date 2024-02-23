@@ -1325,8 +1325,6 @@ def _get_obs_transformer(infoset, position):
                                             bomb_num_batch)
     #print(f"$$$$$$$$my_handcards:{my_handcards.shape}")
 
-    updated_num_cards_left = updated_num_cards_left_batch[0, :]
-    updated_bomb_num = updated_bomb_num_batch[0, :]
 
     x_batch = np.hstack((
                          bid_info_batch,  # 12
@@ -1339,9 +1337,7 @@ def _get_obs_transformer(infoset, position):
                              bid_info,
                              multiply_info,
                              num_cards_left,
-                             bomb_num,
-                             updated_num_cards_left,
-                             updated_bomb_num
+                             bomb_num
                              ))
     z =np.vstack((
                   my_handcards,  # 54
