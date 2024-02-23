@@ -198,7 +198,7 @@ def train(flags):
         # Save the weights for evaluation purpose
         for position in ['landlord', 'landlord_up', 'landlord_down', 'bidding']: # ['landlord', 'landlord_up', 'landlord_down']
             model_weights_dir = os.path.expandvars(os.path.expanduser(
-                '%s/%s/%s' % (flags.savedir, flags.xpid, "general_"+position+'_'+str(frames)+'.ckpt')))
+                '%s/%s/%s' % (flags.savedir, flags.xpid, "transformer_"+position+'_'+str(frames)+'.ckpt')))
             torch.save(learner_model.get_model(position).state_dict(), model_weights_dir)
 
     fps_log = []

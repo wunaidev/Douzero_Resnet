@@ -122,12 +122,19 @@ def act(i, device, batch_queues, model, flags):
                 #print(type(env_output))
                 #print(env_output.keys())
 
+                '''
+                print(torch.vstack((_cards2tensor(action).unsqueeze(0), env_output['obs_z'])).float().shape)
+                print(env_output['obs_x_no_action'].float().shape)
                 obs_z_buf[position].append(torch.vstack((_cards2tensor(action).unsqueeze(0), env_output['obs_z'])).float())
                 # x_batch = torch.cat((env_output['obs_x_no_action'], _cards2tensor(action)), dim=0).float()
                 x_batch = env_output['obs_x_no_action'].float()
                 obs_x_batch_buf[position].append(x_batch)
+                '''
                 
-                #obs_z_buf[position].append(torch.vstack(env_output['obs_z']
+                #print(obs['z_batch'][_action_idx].shape)
+                #print(obs['x_batch'][_action_idx].shape)
+                obs_z_buf[position].append(obs['z_batch'][_action_idx])
+                obs_x_batch_buf[position].append(obs['x_batch'][_action_idx])
 
                 type_buf[position].append(position_index[position])
                 position, obs, env_output = env.step(action, model, device, flags=flags)
