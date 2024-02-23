@@ -366,7 +366,7 @@ class DummyAgent(object):
         self.action = action
 
 
-def get_obs(infoset, model_type="resnet"):
+def get_obs(infoset, model_type="transformer"):
     """
     This function obtains observations with imperfect information
     from the infoset. It has three branches since we encode
@@ -390,17 +390,19 @@ def get_obs(infoset, model_type="resnet"):
 
     `z`: same as z_batch but not a batch.
     """
-    #print(f"正在加载{model_type}版的数据！")
+
     if model_type == "transformer":
+        #print(f"正在加载transformer版的数据！")
         if infoset.player_position not in ["landlord", "landlord_up", "landlord_down"]:
             raise ValueError('')
         return _get_obs_transformer(infoset, infoset.player_position)
     elif model_type == "resnet":
+        print(f"正在加载resnet版的数据！")
         if infoset.player_position not in ["landlord", "landlord_up", "landlord_down"]:
             raise ValueError('')
         return _get_obs_general(infoset, infoset.player_position)
     else:
-        #print(f"{model_type}不属于resnet和tranformer，正在加载LTSM的数据！")
+        print(f"{model_type}不属于resnet和tranformer，正在加载LTSM的数据！")
         if infoset.player_position == 'landlord':
             return _get_obs_landlord(infoset)
         elif infoset.player_position == 'landlord_up':

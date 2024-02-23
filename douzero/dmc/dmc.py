@@ -13,8 +13,7 @@ from torch import nn
 import douzero.dmc.models
 import douzero.env.env
 from .file_writer import FileWriter
-from .models import ModelResNet, OldModel, LandlordLstmModel
-from .models import LandlordLstmModel
+from .models import ModelTransformer
 from .utils import get_batch, log, create_env, create_optimizers, act
 
 mean_episode_return_buf = {p:deque(maxlen=100) for p in ['landlord', 'landlord_up', 'landlord_down', 'bidding']}
@@ -32,11 +31,14 @@ def learn(position, actor_models, model, batch, optimizer, flags, lock):
         device = torch.device('cuda:'+str(flags.training_device))
     else:
         device = torch.device('cpu')
+    #print(type(batch)) #dict
+    print(batch.keys())
     obs_x = batch["obs_x_batch"]
     obs_x = torch.flatten(obs_x, 0, 1).to(device)
     obs_z = torch.flatten(batch['obs_z'].to(device), 0, 1).float()
     target = torch.flatten(batch['target'].to(device), 0, 1)
     episode_returns = batch['episode_return'][batch['done']]
+    
     if len(episode_returns) > 0:
         mean_episode_return_buf[position].append(torch.mean(episode_returns).to(device))
     with lock:
@@ -85,7 +87,7 @@ def train(flags):
     # Initialize actor models
     models = {}
     for device in device_iterator:
-        model = Model(device="cpu")
+        model = ModelTransformer(device="cpu")
         model.share_memory()
         model.eval()
         models[device] = model
@@ -96,7 +98,7 @@ def train(flags):
     batch_queues = {"landlord": ctx.SimpleQueue(), "landlord_up": ctx.SimpleQueue(), "landlord_down": ctx.SimpleQueue(), "bidding": ctx.SimpleQueue()}
 
     # Learner model for training
-    learner_model = Model(device=flags.training_device)
+    learner_model = ModelTransformer(device=flags.training_device)
 
     # Create optimizers
     optimizers = create_optimizers(flags, learner_model)
