@@ -13,7 +13,7 @@ from torch import nn
 import douzero.dmc.models
 import douzero.env.env
 from .file_writer import FileWriter
-from .models import ModelTransformer
+from .models import ModelTransformer, ModelResNet
 from .utils import get_batch, log, create_env, create_optimizers, act
 
 mean_episode_return_buf = {p:deque(maxlen=100) for p in ['landlord', 'landlord_up', 'landlord_down', 'bidding']}
@@ -32,7 +32,7 @@ def learn(position, actor_models, model, batch, optimizer, flags, lock):
     else:
         device = torch.device('cpu')
     #print(type(batch)) #dict
-    print(batch.keys())
+    #print(batch.keys())
     obs_x = batch["obs_x_batch"]
     obs_x = torch.flatten(obs_x, 0, 1).to(device)
     obs_z = torch.flatten(batch['obs_z'].to(device), 0, 1).float()
@@ -87,11 +87,11 @@ def train(flags):
     # Initialize actor models
     models = {}
     for device in device_iterator:
+
         model = ModelTransformer(device="cpu")
         model.share_memory()
         model.eval()
         models[device] = model
-
     # Initialize queues
     actor_processes = []
     ctx = mp.get_context('spawn')
@@ -181,14 +181,15 @@ def train(flags):
                 thread.start()
                 threads.append(thread)
     
+
     def checkpoint(frames):
         if flags.disable_checkpoint:
             return
         log.info('Saving checkpoint to %s', checkpointpath)
         _models = learner_model.get_models()
         torch.save({
-            'model_state_dict': {k: _models[k].state_dict() for k in _models},  # {{"general": _models["landlord"].state_dict()}
-            'optimizer_state_dict': {k: optimizers[k].state_dict() for k in optimizers},  # {"general": optimizers["landlord"].state_dict()}
+            'model_state_dict': {k: _models[k].state_dict() for k in _models},
+            'optimizer_state_dict': {k: optimizers[k].state_dict() for k in optimizers},
             "stats": stats,
             'flags': vars(flags),
             'frames': frames,
@@ -197,9 +198,18 @@ def train(flags):
 
         # Save the weights for evaluation purpose
         for position in ['landlord', 'landlord_up', 'landlord_down', 'bidding']: # ['landlord', 'landlord_up', 'landlord_down']
-            model_weights_dir = os.path.expandvars(os.path.expanduser(
-                '%s/%s/%s' % (flags.savedir, flags.xpid, "transformer_"+position+'_'+str(frames)+'.ckpt')))
-            torch.save(learner_model.get_model(position).state_dict(), model_weights_dir)
+            model_weights_dir = os.path.expandvars(os.path.expanduser('%s/%s/%s' % (flags.savedir, flags.xpid, position)))
+            if not os.path.exists(model_weights_dir):
+                os.makedirs(model_weights_dir)
+            model_weights_path = os.path.join(model_weights_dir, "transformer_"+position+'_'+str(frames)+'.ckpt')
+            torch.save(learner_model.get_model(position).state_dict(), model_weights_path)
+
+            # 管理检查点文件，保持数量不超过100
+            checkpoints = list(sorted(os.listdir(model_weights_dir), key=lambda x: os.path.getmtime(os.path.join(model_weights_dir, x))))
+            if len(checkpoints) > 3:
+                for checkpoint_file in checkpoints[:-3]:
+                    os.remove(os.path.join(model_weights_dir, checkpoint_file))
+
 
     fps_log = []
     timer = timeit.default_timer

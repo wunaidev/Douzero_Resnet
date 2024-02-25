@@ -65,9 +65,9 @@ def train(model, train_loader, optimizer, device):
   
 
         # 计算KLDivLoss
-        criterion_kl = torch.nn.KLDivLoss(reduction='batchmean')
-        log_probs = F.log_softmax(q_values, dim=1)
-        kl_loss = criterion_kl(log_probs, t_value)
+        #criterion_kl = torch.nn.KLDivLoss(reduction='batchmean')
+        #log_probs = F.log_softmax(q_values, dim=1)
+        #kl_loss = criterion_kl(log_probs, t_value)
 
 
         # 组合两部分的损失
@@ -139,9 +139,9 @@ def main():
             print(f"No weight file found for {position} at {weight_file}, initializing from scratch.")
     
     optimizers = {
-        'landlord': AdamW(model_wrapper.get_model('landlord').parameters(), lr=1e-4),
-        'landlord_up': AdamW(model_wrapper.get_model('landlord_up').parameters(), lr=1e-4),
-        'landlord_down': AdamW(model_wrapper.get_model('landlord_down').parameters(), lr=1e-4)
+        'landlord': AdamW(model_wrapper.get_model('landlord').parameters(), lr=1e-5),
+        'landlord_up': AdamW(model_wrapper.get_model('landlord_up').parameters(), lr=1e-5),
+        'landlord_down': AdamW(model_wrapper.get_model('landlord_down').parameters(), lr=1e-5)
     }
 
     epochs = 10000
@@ -180,7 +180,7 @@ def main():
             "NEW")
         '''
 
-        if (epoch+1)%1==0:
+        if (epoch+1)%5==0:
             print("正在生成新的数据...")
             eval_data = '/content/Douzero_Resnet/eval_data.pkl'
 
@@ -210,6 +210,7 @@ def main():
             
         
 if __name__ == '__main__':
+    
     #which_model = "resnet"
     which_model = "transformer"
     #which_model = "lstm"

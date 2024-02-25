@@ -284,6 +284,7 @@ class GeneralModel(nn.Module):
         #print(f"xshape:{x.shape}")
         out = F.relu(self.bn1(self.conv1(z)))
         #print(f"outconv1shape:{out.shape}")
+        print(f"out:{out}")
         out = self.layer1(out)
         out = self.layer2(out)
         out = self.layer3(out)
@@ -295,6 +296,7 @@ class GeneralModel(nn.Module):
         out = F.leaky_relu_(self.linear2(out))
         out = F.leaky_relu_(self.linear3(out))
         out = F.leaky_relu_(self.linear4(out))
+        
         if return_value:
             return dict(values=out)
         else:
@@ -508,10 +510,12 @@ class GeneralModelTransformer(nn.Module):
 
         #print(history_features.shape) #(bz, 43, 64)
         '''
+        
 
         history_features = self.cnn1d_multi(z) #(action_nums, 320, 27)
+        print(history_features)
         #print(history_features.shape)
-        
+        #print(f"history_features:{history_features}")
         history_features=history_features.permute(0, 2, 1) #(bz, channels, feature) ->  #(batch, feature, channels)，
         # 因为1d卷积破坏了原有通道上的联系，但是特征维度上都是相邻卷积卷出来的，依然存在联系，
         # 所以把特征维度作为Transformer的seq_len，求它们的关联度
@@ -549,6 +553,7 @@ class GeneralModelTransformer(nn.Module):
 
         out = self.linear1(combined_features)
         out = F.gelu(out)
+
         
         out = self.linear2(out)
         out = F.gelu(out)
@@ -558,6 +563,8 @@ class GeneralModelTransformer(nn.Module):
         
         #out = F.selu(self.linear4(out))
         out = self.linear4(out)
+
+        #print(f"out:{out}")
 
         if return_value:
             return dict(values=out)

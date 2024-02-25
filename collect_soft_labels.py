@@ -33,10 +33,12 @@ def simulate_game(card_play_data_list, card_play_model_path_dict, data_collectio
     for idx, card_play_data in enumerate(card_play_data_list):
         env.card_play_init(card_play_data)
 
+        '''
         print("\nStart ------- ")
         print ("".join([EnvCard2RealCard[c] for c in card_play_data["landlord"]]))
         print ("".join([EnvCard2RealCard[c] for c in card_play_data["landlord_down"]]))
         print ("".join([EnvCard2RealCard[c] for c in card_play_data["landlord_up"]]))
+        '''
         
         count = 0
         while not env.game_over:
